@@ -1,8 +1,11 @@
 package units
 
 import (
+	"fmt"
 	"math"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestBytes_Ceil(t *testing.T) {
@@ -562,5 +565,177 @@ func TestBytes_RoundBy(t *testing.T) {
 				t.Errorf("RoundBy() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestBytes_Format(t *testing.T) {
+	formatToBinaryMagnitude := map[string]Bytes{"b": B, "k": KiB, "m": MiB, "g": GiB, "t": TiB}
+	formatToDecimalMagnitude := map[string]Bytes{"b": B, "k": KB, "m": MB, "g": GB, "t": TB}
+
+	bytes := map[string]Bytes{
+		"zero": 0,
+	}
+	for i := 1; i < len(binaryMagnitudes); i++ {
+		unit := binaryMagnitudes[i]
+		lowerUnit := binaryMagnitudes[i-1]
+		bytes["1"+string(unitNames[unit])] = 1 * unit
+		bytes["2"+string(unitNames[unit])] = 2 * unit
+		bytes["2"+string(unitNames[unit])+"-1"+string(unitNames[lowerUnit])] = 2*unit - 1*lowerUnit
+		bytes["2"+string(unitNames[unit])+"-512"+string(unitNames[lowerUnit])] = 2*unit - 512*lowerUnit
+		bytes["2"+string(unitNames[unit])+"+1"+string(unitNames[lowerUnit])] = 2*unit + 1*lowerUnit
+		bytes["2"+string(unitNames[unit])+"+512"+string(unitNames[lowerUnit])] = 2*unit + 512*lowerUnit
+	}
+	for i := 1; i < len(decimalMagnitudes); i++ {
+		unit := decimalMagnitudes[i]
+		lowerUnit := decimalMagnitudes[i-1]
+		bytes["1"+string(unitNames[unit])] = 1 * unit
+		bytes["2"+string(unitNames[unit])] = 2 * unit
+		bytes["2"+string(unitNames[unit])+"-1"+string(unitNames[lowerUnit])] = 2*unit - 1*lowerUnit
+		bytes["2"+string(unitNames[unit])+"-500"+string(unitNames[lowerUnit])] = 2*unit - 500*lowerUnit
+		bytes["2"+string(unitNames[unit])+"+1"+string(unitNames[lowerUnit])] = 2*unit + 1*lowerUnit
+		bytes["2"+string(unitNames[unit])+"+500"+string(unitNames[lowerUnit])] = 2*unit + 500*lowerUnit
+	}
+	verbs := []string{"d", "b", "k", "m", "g", "t", "s", "v", "f"}
+	for name, b := range bytes {
+		for _, verb := range verbs {
+			testName := name + " with " + verb
+			logTpl := testName + ":  %-8s => %s"
+			t.Run(testName, func(t *testing.T) {
+				var format, result string
+				doFormat := func() { result = fmt.Sprintf(format, b) }
+				doLog := func() { t.Logf(logTpl, format, result) }
+				if verb == "d" {
+					format = "%d"
+					doFormat()
+					doLog()
+					assert.Equal(t, fmt.Sprintf("%d", uint64(b)), result)
+
+					format = "%6d"
+					doFormat()
+					doLog()
+					assert.Equal(t, fmt.Sprintf("%6d", uint64(b)), result)
+					return
+				}
+
+				var binMag, decMag Bytes
+				if verb == "f" || verb == "s" || verb == "v" {
+					binMag = b.magnitude()
+					decMag = b.decimalMagnitude()
+				} else {
+					binMag = formatToBinaryMagnitude[verb]
+					decMag = formatToDecimalMagnitude[verb]
+				}
+
+				if verb == "f" {
+					binVal := float64(b) / float64(binMag)
+					decVal := float64(b) / float64(decMag)
+
+					for _, testcase := range []struct {
+						format string
+						expect string
+					}{
+						{
+							format: "%f",
+							expect: fmt.Sprintf("%.1f"+string(unitNames[binMag]), binVal),
+						},
+						{
+							format: "%.2f",
+							expect: fmt.Sprintf("%.2f"+string(unitNames[binMag]), binVal),
+						},
+						{
+							format: "%10.2f",
+							expect: fmt.Sprintf("%*.2f"+string(unitNames[binMag]), 10-len(string(unitNames[binMag])), binVal),
+						},
+						{
+							format: "% f",
+							expect: fmt.Sprintf("%.1f", binVal),
+						},
+						{
+							format: "% .2f",
+							expect: fmt.Sprintf("%.2f", binVal),
+						},
+						{
+							format: "% 8.2f",
+							expect: fmt.Sprintf("%8.2f", binVal),
+						},
+						{
+							format: "%#f",
+							expect: fmt.Sprintf("%.1f"+string(unitNames[decMag]), decVal),
+						},
+						{
+							format: "%#.2f",
+							expect: fmt.Sprintf("%.2f"+string(unitNames[decMag]), decVal),
+						},
+						{
+							format: "%#10.2f",
+							expect: fmt.Sprintf("%*.2f"+string(unitNames[decMag]), 10-len(string(unitNames[decMag])), decVal),
+						},
+						{
+							format: "% #f",
+							expect: fmt.Sprintf("%.1f", decVal),
+						},
+						{
+							format: "% #.2f",
+							expect: fmt.Sprintf("%.2f", decVal),
+						},
+						{
+							format: "% #8.2f",
+							expect: fmt.Sprintf("%8.2f", decVal),
+						},
+					} {
+						format = testcase.format
+						doFormat()
+						doLog()
+						assert.Equal(t, testcase.expect, result)
+					}
+					return
+				}
+				binVal := uint64(b / binMag)
+				decVal := uint64(b / decMag)
+
+				for _, testcase := range []struct {
+					format string
+					expect string
+				}{
+					{
+						format: "%" + verb,
+						expect: fmt.Sprintf("%d"+string(unitNames[binMag]), binVal),
+					},
+					{
+						format: "%6" + verb,
+						expect: fmt.Sprintf("%*d"+string(unitNames[binMag]), 6-len(string(unitNames[binMag])), binVal),
+					},
+					{
+						format: "% " + verb,
+						expect: fmt.Sprintf("%d", binVal),
+					},
+					{
+						format: "% 6" + verb,
+						expect: fmt.Sprintf("%6d", binVal),
+					},
+					{
+						format: "%#" + verb,
+						expect: fmt.Sprintf("%d"+string(unitNames[decMag]), decVal),
+					},
+					{
+						format: "%#6" + verb,
+						expect: fmt.Sprintf("%*d"+string(unitNames[decMag]), 6-len(string(unitNames[decMag])), decVal),
+					},
+					{
+						format: "% #" + verb,
+						expect: fmt.Sprintf("%d", decVal),
+					},
+					{
+						format: "% #6" + verb,
+						expect: fmt.Sprintf("%6d", decVal),
+					},
+				} {
+					format = testcase.format
+					doFormat()
+					doLog()
+					assert.Equal(t, testcase.expect, result)
+				}
+			})
+		}
 	}
 }
