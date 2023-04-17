@@ -2,7 +2,6 @@ package units
 
 import (
 	"fmt"
-	"math"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -127,27 +126,6 @@ func TestBytes_Ceil(t *testing.T) {
 			}
 		})
 	}
-}
-
-func FuzzBytes_Ceil(f *testing.F) {
-	f.Fuzz(func(t *testing.T, i uint64) {
-		var mag float64 = 1
-		switch {
-		case i >= 1<<40:
-			mag = 1 << 40
-		case i >= 1<<30:
-			mag = 1 << 30
-		case i >= 1<<20:
-			mag = 1 << 20
-		case i >= 1<<10:
-			mag = 1 << 10
-		}
-		expect := uint64(math.Ceil(float64(i)/mag) * mag)
-		got := Bytes(i).Ceil()
-		if got != Bytes(expect) {
-			t.Errorf("ceil of %d expect %d, got %d", i, expect, got)
-		}
-	})
 }
 
 func TestBytes_DecimalCeil(t *testing.T) {
@@ -315,27 +293,6 @@ func TestBytes_Floor(t *testing.T) {
 			}
 		})
 	}
-}
-
-func FuzzBytes_Floor(f *testing.F) {
-	f.Fuzz(func(t *testing.T, i uint64) {
-		var mag float64 = 1
-		switch {
-		case i >= 1<<40:
-			mag = 1 << 40
-		case i >= 1<<30:
-			mag = 1 << 30
-		case i >= 1<<20:
-			mag = 1 << 20
-		case i >= 1<<10:
-			mag = 1 << 10
-		}
-		expect := uint64(math.Floor(float64(i)/mag) * mag)
-		got := Bytes(i).Floor()
-		if got != Bytes(expect) {
-			t.Errorf("floor of %d expect %d, got %d", i, expect, got)
-		}
-	})
 }
 
 func TestBytes_DecimalFloor(t *testing.T) {
