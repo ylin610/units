@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	// key indicates whether '#' is represented in format flags
+	// key indicates whether '#' is presented in format flags
 	magnitudes = map[bool][]Bytes{
 		true:  decimalMagnitudes,
 		false: binaryMagnitudes,
@@ -143,11 +143,15 @@ func (b Bytes) decimalMagnitude() Bytes {
 	}
 }
 
+// Ceil returns the least value greater than or equal to b,
+// and is multiple of binary order of magnitude of b.
 func (b Bytes) Ceil() Bytes {
 	mag := b.magnitude()
 	return (b + mag - 1) & ^(mag - 1)
 }
 
+// DecimalCeil returns the least value greater than or equal to b,
+// and is multiple of decimal order of magnitude of b.
 func (b Bytes) DecimalCeil() Bytes {
 	mag := b.decimalMagnitude()
 	switch mod := b % mag; mod {
@@ -158,18 +162,24 @@ func (b Bytes) DecimalCeil() Bytes {
 	}
 }
 
+// Floor returns the greatest value less than or equal to b,
+// and is multiple of binary order of magnitude of b.
 func (b Bytes) Floor() Bytes {
 	return b & ^(b.magnitude() - 1)
 }
 
+// DecimalFloor returns the greatest value less than or equal to b,
+// and is multiple of decimal order of magnitude of b.
 func (b Bytes) DecimalFloor() Bytes {
 	return b - b%b.decimalMagnitude()
 }
 
+// Truncate trims b to the greatest value multiple of mag.
 func (b Bytes) Truncate(mag Bytes) Bytes {
 	return b - b%mag
 }
 
+// RoundBy returns the nearest value to b that is multiple of mag.
 func (b Bytes) RoundBy(mag Bytes) Bytes {
 	switch mag {
 	case B:
@@ -181,10 +191,12 @@ func (b Bytes) RoundBy(mag Bytes) Bytes {
 	}
 }
 
+// Round returns the nearest value to b that is multiple of binary order of magnitude of b.
 func (b Bytes) Round() Bytes {
 	return b.RoundBy(b.magnitude())
 }
 
+// DecimalRound returns the nearest value to b that is multiple of decimal order of magnitude of b.
 func (b Bytes) DecimalRound() Bytes {
 	return b.RoundBy(b.decimalMagnitude())
 }
